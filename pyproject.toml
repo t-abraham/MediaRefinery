@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mediarefinery"
+version = "0.1.0a0"
+description = "Local-first media triage companion for Immich with user-defined categories."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+  { name = "MediaRefinery contributors" }
+]
+dependencies = [
+  "PyYAML>=6.0.1"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0"
+]
+onnx = [
+  "numpy>=1.26",
+  "onnxruntime>=1.17,<2",
+  "Pillow>=10.0"
+]
+service = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "apscheduler>=3.10,<4",
+  "cryptography>=42",
+  "itsdangerous>=2.1",
+  "httpx>=0.27"
+]
+
+[project.scripts]
+mediarefinery = "mediarefinery.cli:main"
+mediarefinery-service = "mediarefinery.service.app:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+

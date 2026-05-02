@@ -1,0 +1,89 @@
+version: 1
+
+categories:
+  - id: receipt
+    description: Financial receipt or invoice-like item
+  - id: screenshot
+    description: Screen capture that may need organization
+  - id: document
+    description: Document-like image or video
+  - id: other
+    description: Anything outside the operator taxonomy
+
+classifier_profiles:
+  document_sorter:
+    backend: noop
+    model_path: null
+    output_mapping:
+      raw_receipt: receipt
+      raw_screenshot: screenshot
+      raw_document: document
+      raw_other: other
+
+integration:
+  immich:
+    url: "https://immich.example.local"
+    api_key_env: "IMMICH_API_KEY"
+    timeout_seconds: 60
+    verify_tls: true
+    page_size: 100
+
+scanner:
+  mode: incremental
+  media_types: [image, video]
+  reprocess: false
+
+classifier:
+  profile: document_sorter
+  device: cpu
+  batch_size: 2
+  thresholds:
+    review: 0.5
+    tag: 0.7
+    archive: 0.95
+
+actions:
+  dry_run: true
+  never_delete: true
+  review_album_name: "MediaRefinery Review"
+  create_album_if_missing: true
+  tag_name: "document-review"
+  create_tag_if_missing: true
+  archive_enabled: true
+
+state:
+  sqlite_path: "/data/state/custom-taxonomy.sqlite3"
+
+runtime:
+  concurrency: 2
+  rate_limit_per_second: 5
+  temp_dir: "/data/tmp"
+  delete_temp_files: true
+  log_level: "INFO"
+
+reports:
+  enabled: true
+  output_dir: "/data/reports"
+  format: "markdown"
+
+policies:
+  receipt:
+    image:
+      on_match: [add_tag]
+    video:
+      on_match: [manual_review]
+  screenshot:
+    image:
+      on_match: [add_to_review_album]
+    video:
+      on_match: [manual_review]
+  document:
+    image:
+      on_match: [archive]
+    video:
+      on_match: [manual_review]
+  other:
+    image:
+      on_match: [no_action]
+    video:
+      on_match: [no_action]

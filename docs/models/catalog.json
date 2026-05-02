@@ -1,0 +1,98 @@
+{
+  "$schema_version": "2",
+  "_comment": "MediaRefinery v2 curated model catalog. Schema v2 adds a per-entry `status` field: 'verified' (sha256 + url confirmed), 'unavailable' (no ONNX upstream; entry retained for documentation), or 'pending' (placeholder, code MUST refuse to install). All download URLs are HuggingFace `resolve/main/` paths so we do not depend on the deprecated onnx/models GitHub LFS distribution (sunset 2025-07-01). Updates to this file require code review per threat-model T08.",
+  "_curation_findings_2026_05_01": {
+    "summary": "Phase A picks (OpenNSFW2 ONNX + GantMan ONNX) had no upstream ONNX artefact and were dropped. Replaced with AdamCodd/vit-base-nsfw-detector, the only Apache-2.0 NSFW classifier on HuggingFace that ships ONNX directly (multiple quantized variants). The generic ImageNet entry was pivoted from `github.com/onnx/models/raw/<commit>/...` to `huggingface.co/onnxmodelzoo/...` because GitHub LFS for onnx/models was deprecated 2025-07-01; the file bytes are byte-identical (sha256 unchanged) so the pivot is a URL-only change. The five-class multiclass NSFW slot is intentionally dropped for v2.0 — no clean ONNX upstream exists; revisit in v2.1.",
+    "verified": [
+      "mobilenet-v2-imagenet-onnx — onnxmodelzoo HF mirror, sha256 c0c3f76d93fa3fd6580652a45618618a220fced18babf65774ed169de0432ad5, 13964571 bytes",
+      "adamcodd-vit-nsfw-quantized — sha256 432763a6899ebc418c55f784b98f90565e5fc694c778d2ffcb0294b12f6a7404, 88500985 bytes",
+      "adamcodd-vit-nsfw-q4f16 — sha256 8402aaf2e181980706e1e264727ca9c3b65cc96bd715d6969e75da4010f8b734, 50302325 bytes"
+    ],
+    "dropped": [
+      "opennsfw2-onnx-1.0 — bhky/opennsfw2 publishes 20+ releases (latest v0.15.2); none ship ONNX or .h5. Package wraps Keras weights downloaded at runtime.",
+      "gantman-mobilenet-v2-onnx — GantMan/nsfw_model 1.1.0/1.2.0 ship Keras .zip files only; no ONNX upstream."
+    ]
+  },
+  "_policy": {
+    "distribution": "no bundled weights; models are downloaded at first run from the urls below with sha256 verification and explicit license acceptance recorded in the audit log",
+    "license_acceptance": "the wizard MUST display the full license_text (or the linked license_url) and capture an audit_log entry with actor, model id, sha256, and timestamp before activating the model",
+    "https_only": true,
+    "runtime": "ONNX Runtime CPU; no Python-side model code execution"
+  },
+  "models": [
+    {
+      "id": "mobilenet-v2-imagenet-onnx",
+      "name": "MobileNetV2 ImageNet-1k (ONNX, ONNX Model Zoo via HuggingFace)",
+      "kind": "generic_image_classifier",
+      "status": "verified",
+      "description": "1000-class ImageNet classifier; lightweight CPU baseline for the universal (non-NSFW) preset. Lets users build categories around generic concepts (dog, beach, document, screenshot, ...) without committing to a sensitive-content model.",
+      "url": "https://huggingface.co/onnxmodelzoo/mobilenetv2-12/resolve/main/mobilenetv2-12.onnx",
+      "url_alternates": [
+        "https://github.com/onnx/models/raw/4c46cd00fbdb/validated/vision/classification/mobilenet/model/mobilenetv2-12.onnx"
+      ],
+      "sha256": "c0c3f76d93fa3fd6580652a45618618a220fced18babf65774ed169de0432ad5",
+      "size_bytes": 13964571,
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/onnx/models/blob/main/LICENSE",
+      "license_text_path": "docs/models/licenses/onnx-models-Apache-2.0.txt",
+      "input_size": [224, 224],
+      "input_layout": "NCHW",
+      "input_mean": [0.485, 0.456, 0.406],
+      "input_std": [0.229, 0.224, 0.225],
+      "output_classes_url": "https://github.com/onnx/models/raw/main/validated/vision/classification/synset.txt",
+      "recommended_thresholds": {
+        "_default": 0.50
+      },
+      "presets": ["generic"],
+      "notes": "ImageNet labels are coarse; the dashboard maps user-defined categories to one or more ImageNet labels via the existing classifier-profile YAML schema. URL pivoted from the (now-deprecated) onnx/models GitHub LFS to the HuggingFace onnxmodelzoo mirror; bytes are identical (sha256 unchanged)."
+    },
+    {
+      "id": "adamcodd-vit-nsfw-quantized",
+      "name": "AdamCodd ViT-base NSFW detector (INT8 quantized ONNX)",
+      "kind": "binary_nsfw_classifier",
+      "status": "verified",
+      "description": "Binary safe/NSFW image classifier based on Vision Transformer (ViT-base/224); INT8-quantized ONNX export. Default classifier for the sensitive-media preset. Supersedes the dropped OpenNSFW2 and GantMan entries which had no ONNX upstream.",
+      "url": "https://huggingface.co/AdamCodd/vit-base-nsfw-detector/resolve/main/onnx/model_quantized.onnx",
+      "url_alternates": [],
+      "sha256": "432763a6899ebc418c55f784b98f90565e5fc694c778d2ffcb0294b12f6a7404",
+      "size_bytes": 88500985,
+      "license": "Apache-2.0",
+      "license_url": "https://huggingface.co/AdamCodd/vit-base-nsfw-detector",
+      "license_text_path": "docs/models/licenses/adamcodd-vit-nsfw-Apache-2.0.txt",
+      "input_size": [224, 224],
+      "input_layout": "NCHW",
+      "input_mean": [0.5, 0.5, 0.5],
+      "input_std": [0.5, 0.5, 0.5],
+      "output_classes": ["sfw", "nsfw"],
+      "recommended_thresholds": {
+        "nsfw": 0.85
+      },
+      "presets": ["sensitive-content-review", "generic"],
+      "notes": "ViT preprocessing: bilinear resize to 224x224, channel-first NCHW, normalised to [-1, 1] (mean 0.5 / std 0.5 per channel). Threshold of 0.85 mirrors the conservative posture of the v1 sensitive-media preset; deployments should re-tune via the dashboard 'preview on N samples' button before enabling live actions."
+    },
+    {
+      "id": "adamcodd-vit-nsfw-q4f16",
+      "name": "AdamCodd ViT-base NSFW detector (Q4+FP16 ONNX, low-footprint)",
+      "kind": "binary_nsfw_classifier",
+      "status": "verified",
+      "description": "Same model as `adamcodd-vit-nsfw-quantized` with Q4 + FP16 quantisation (~50 MB). Use on low-resource deployments where the 88 MB INT8 variant is too large; expect a small accuracy drop versus the INT8 export.",
+      "url": "https://huggingface.co/AdamCodd/vit-base-nsfw-detector/resolve/main/onnx/model_q4f16.onnx",
+      "url_alternates": [],
+      "sha256": "8402aaf2e181980706e1e264727ca9c3b65cc96bd715d6969e75da4010f8b734",
+      "size_bytes": 50302325,
+      "license": "Apache-2.0",
+      "license_url": "https://huggingface.co/AdamCodd/vit-base-nsfw-detector",
+      "license_text_path": "docs/models/licenses/adamcodd-vit-nsfw-Apache-2.0.txt",
+      "input_size": [224, 224],
+      "input_layout": "NCHW",
+      "input_mean": [0.5, 0.5, 0.5],
+      "input_std": [0.5, 0.5, 0.5],
+      "output_classes": ["sfw", "nsfw"],
+      "recommended_thresholds": {
+        "nsfw": 0.85
+      },
+      "presets": ["sensitive-content-review"],
+      "notes": "Same preprocessing and class semantics as the INT8 variant. Tag this as the recommended download for low-RAM Docker hosts (<2 GB available)."
+    }
+  ]
+}

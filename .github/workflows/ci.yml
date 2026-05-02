@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      # Frontend steps are guarded by the presence of the lockfile so
+      # this workflow keeps passing on branches that predate the
+      # frontend/ subgraph (PR #50). Once that lands on main the gates
+      # become a no-op and the dashboard bundle is built before pytest
+      # — the static-mount integration test then sees the real bundle.
+      - name: Detect frontend
+        id: fe
+        run: |
+          if [ -f frontend/package-lock.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.fe.outputs.present == 'true'
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        if: steps.fe.outputs.present == 'true'
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build dashboard bundle
+        if: steps.fe.outputs.present == 'true'
+        run: npm run build
+        working-directory: frontend
+
+      - name: Create virtual environment
+        run: python -m venv .venv
+
+      - name: Install package
+        run: .venv/bin/python -m pip install -e ".[dev,service]"
+
+      - name: Run tests
+        run: .venv/bin/python -m pytest
+
+      - name: Run privacy-focused tests
+        run: >-
+          .venv/bin/python -m pytest
+          tests/test_scan_privacy.py
+          tests/test_reporter.py
+          tests/test_state.py::test_error_records_redact_paths_secrets_and_media_like_values
+
+      - name: Validate generic example config
+        run: .venv/bin/python -m mediarefinery config validate --config templates/config.example.yml
+
+      - name: Validate sensitive preset example config
+        run: .venv/bin/python -m mediarefinery config validate --config templates/config.preset.sensitive.example.yml
+
+      - name: Validate custom taxonomy fixture
+        run: .venv/bin/python -m mediarefinery config validate --config tests/fixtures/config.custom-taxonomy.yml
+
+      - name: Compile source and tests
+        run: .venv/bin/python -m compileall -q src tests
+
+      # No lint/type job is enabled yet: .[dev] currently declares pytest only.
+      # See docs/12-testing-strategy.md for the Sprint 012 release gate decision.
+

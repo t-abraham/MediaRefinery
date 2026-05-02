@@ -1,0 +1,117 @@
+# MediaRefinery — generic example (safe defaults; placeholders only)
+# See docs/07-config-spec.md. For a sensitive-content preset, see
+# templates/config.preset.sensitive.example.yml
+#
+# Paths below match templates/docker-compose.example.yml volume mounts (/data/...).
+# For a local install without Docker, you may use e.g. /var/lib/mediarefinery/...
+
+version: 1
+
+# User-defined category IDs used by policies and the decision engine
+categories:
+  - id: unknown
+    description: Not yet classified or insufficient model evidence
+  - id: ok
+    description: No action required for default policy
+  - id: needs_review
+    description: Send to review album / human triage
+  - id: archive_candidate
+    description: Optional archive (requires explicit user enablement in actions)
+
+# Named classifier configuration (pluggable backend)
+classifier_profiles:
+  default:
+    backend: noop  # use onnx with an operator-provided model for real local classification
+    model_path: null
+    video_aggregation: max
+    output_mapping:
+      # Maps raw label or score head name → category id
+      # Example only — adjust to your model:
+      raw_safety: ok
+      raw_flag: needs_review
+  # Example ONNX profile. Uncomment and set classifier.profile to onnx_local
+  # after installing the optional ONNX dependencies and mounting your model.
+  # onnx_local:
+  #   backend: onnx
+  #   model_path: /opt/models/operator-provided.onnx
+  #   model_version: "operator-model-v1"
+  #   input_size: 224
+  #   input_mean: [0.0, 0.0, 0.0]
+  #   input_std: [1.0, 1.0, 1.0]
+  #   input_name: null
+  #   output_name: null
+  #   video_aggregation: max
+  #   output_mapping:
+  #     raw_safety: ok
+  #     raw_flag: needs_review
+
+integration:
+  immich:
+    url: "https://immich.example.local"
+    api_key_env: "IMMICH_API_KEY"  # set in real env, never commit value
+    timeout_seconds: 60
+    verify_tls: true
+    page_size: 100
+
+scanner:
+  mode: incremental
+  since: null
+  include_albums: []
+  exclude_albums: []
+  include_archived: false
+  include_favorites: true
+  media_types: [image]  # image | video | both
+  reprocess: false
+
+classifier:
+  profile: default
+  device: cpu
+  batch_size: 4
+  image_size: 224
+  thresholds:
+    # Per-category or per-head; keys depend on profile (see 07-config-spec)
+    review: 0.5
+    tag: 0.7
+    archive: 0.9
+
+video:
+  enabled: false
+  frame_count: 3
+  frame_strategy: uniform
+  max_duration_seconds: 300
+  ffmpeg_path: "ffmpeg"
+
+actions:
+  dry_run: true
+  never_delete: true
+  review_album_name: "MediaRefinery Review"
+  create_album_if_missing: true
+  tag_name: "mediarefinery-review"
+  create_tag_if_missing: true
+  archive_enabled: false
+
+state:
+  sqlite_path: "/data/state/state.sqlite3"
+
+runtime:
+  concurrency: 2
+  rate_limit_per_second: 5
+  temp_dir: "/data/tmp"
+  delete_temp_files: true
+  log_level: "INFO"
+
+reports:
+  enabled: true
+  output_dir: "/data/reports"
+  format: "markdown"  # markdown is implemented; csv/json are future formats
+
+policies:
+  # Shape: <category_id> -> <media_type> -> on_match action list.
+  # Supported action names are documented in docs/06-classification-policy.md.
+  # delete/trash are invalid; archive requires actions.archive_enabled: true.
+  needs_review:
+    image:
+      on_match: [add_to_review_album, add_tag]
+  ok:
+    image:
+      on_match: [no_action]

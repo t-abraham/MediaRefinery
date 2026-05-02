@@ -1,0 +1,31 @@
+# Git
+.git
+.gitignore
+
+# Python build and caches
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.pyc
+*.egg-info/
+dist/
+build/
+
+# Local secrets and env
+.env
+.env.*
+
+# Local runtime artifacts (image build should not bundle operator state)
+*.sqlite
+*.sqlite3
+*.db
+/data/
+/reports/
+/tmp/
+/models/
+
+# Docs and planning (optional layers may add these back if needed for context)
+# planning/

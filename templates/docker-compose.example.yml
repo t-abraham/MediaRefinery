@@ -1,0 +1,40 @@
+# Example for running from the repository root:
+#   docker compose -f templates/docker-compose.example.yml up --build mediarefinery
+#
+# Copy templates/env.example to .env at the repository root and replace placeholders.
+# Keep API key values in .env or your orchestrator secret store, not in this file.
+
+services:
+  mediarefinery:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      # To build an ONNX-enabled local image, uncomment:
+      # args:
+      #   MEDIAREFINERY_INSTALL_TARGET: ".[onnx]"
+    image: mediarefinery:local
+    container_name: mediarefinery
+    restart: "no"
+    env_file:
+      - ../.env
+    environment:
+      MEDIAREFINERY_CONFIG: "/config/config.yml"
+    volumes:
+      - ../templates/config.example.yml:/config/config.yml:ro
+      - mediarefinery_state:/data/state
+      - mediarefinery_temp:/data/tmp
+      - mediarefinery_reports:/data/reports
+      # Mount operator-provided model artifacts when using backend: onnx.
+      # - /host/path/to/models:/opt/models:ro
+    command: ["mediarefinery", "doctor", "--config", "/config/config.yml"]
+    # networks:
+    #   - immich_net
+
+volumes:
+  mediarefinery_state:
+  mediarefinery_temp:
+  mediarefinery_reports:
+
+# networks:
+#   immich_net:
+#     external: true

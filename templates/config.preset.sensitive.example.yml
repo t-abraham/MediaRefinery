@@ -1,0 +1,106 @@
+# PRESET: sensitive-content-review (example; NOT a default product mode)
+# Stricter copy and defaults aligned with docs/presets/sensitive-media-review.md
+# — dry-run, no auto-delete, conservative thresholds. Replace all placeholders.
+# This file is for operators who need the NSFW-triage *style* use case; keep it opt-in.
+
+version: 1
+preset: sensitive-content-review
+
+categories:
+  - id: safe
+  - id: suggestive
+  - id: explicit
+  - id: manual_review
+  - id: unknown
+
+classifier_profiles:
+  sensitive_local:
+    backend: noop  # use onnx only with an operator-provided, reviewed model
+    model_path: null
+    video_aggregation: max
+    output_mapping:
+      # Must match your model export when using a real backend.
+      raw_safety: safe
+      raw_flag: manual_review
+      default: safe
+
+integration:
+  immich:
+    url: "https://immich.example.local"
+    api_key_env: "IMMICH_API_KEY"
+    timeout_seconds: 60
+    verify_tls: true
+    page_size: 100
+
+scanner:
+  mode: incremental
+  media_types: [image, video]
+  reprocess: false
+
+classifier:
+  profile: sensitive_local
+  device: cpu
+  batch_size: 1
+  thresholds:
+    review: 0.35
+    tag: 0.55
+    archive: 0.85
+
+video:
+  enabled: true
+  frame_count: 4
+  frame_strategy: uniform
+  max_duration_seconds: 600
+  ffmpeg_path: "ffmpeg"
+
+actions:
+  dry_run: true
+  never_delete: true
+  review_album_name: "NSFW Review"
+  create_album_if_missing: true
+  tag_name: "nsfw-review"
+  create_tag_if_missing: true
+  archive_enabled: false
+
+state:
+  sqlite_path: "/data/state/sensitive-state.sqlite3"
+
+runtime:
+  delete_temp_files: true
+  log_level: "INFO"
+  temp_dir: "/data/tmp"
+
+reports:
+  enabled: true
+  output_dir: "/data/reports"
+  format: "markdown"
+
+# Policies: conservative; action names must match docs/06-classification-policy.md (Action bundles).
+# Do not add features that collect, display, or export galleries of explicit material outside Immich.
+# delete/trash are invalid; archive requires actions.archive_enabled: true.
+policies:
+  safe:
+    image:
+      on_match: [no_action]
+    video:
+      on_match: [no_action]
+  suggestive:
+    image:
+      on_match: [add_to_review_album]
+    video:
+      on_match: [add_to_review_album]
+  explicit:
+    image:
+      on_match: [add_to_review_album]
+    video:
+      on_match: [add_to_review_album]
+  manual_review:
+    image:
+      on_match: [manual_review]
+    video:
+      on_match: [manual_review]
+  unknown:
+    image:
+      on_match: [manual_review]
+    video:
+      on_match: [manual_review]

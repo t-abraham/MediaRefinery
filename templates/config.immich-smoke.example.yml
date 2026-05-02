@@ -1,0 +1,100 @@
+# MediaRefinery live Immich smoke example.
+# Copy to tmp/immich-smoke.config.yml and replace placeholders locally.
+# Keep server URLs, API keys, state files, reports, and smoke outputs uncommitted.
+#
+# Required smoke API permissions when the review album already exists:
+# - server.about
+# - asset.read
+# - asset.view
+# - album.read
+# - albumAsset.create
+# - tag.read
+# - tag.asset
+# Add album.create only if actions.create_album_if_missing is true.
+# Add tag.create only if actions.create_tag_if_missing is true.
+
+version: 1
+
+categories:
+  - id: smoke_review
+    description: Synthetic or deliberately non-private live smoke assets
+  - id: ok
+    description: No action
+
+classifier_profiles:
+  smoke_noop:
+    backend: noop
+    model_path: null
+    video_aggregation: max
+    output_mapping:
+      raw_safety: smoke_review
+      raw_flag: smoke_review
+
+integration:
+  immich:
+    url: "https://REPLACE_WITH_SMOKE_IMMICH_HOST"
+    api_key_env: "IMMICH_API_KEY"
+    timeout_seconds: 60
+    verify_tls: true
+    page_size: 25
+
+scanner:
+  mode: incremental
+  since: null
+  include_albums: []
+  exclude_albums: []
+  include_archived: false
+  include_favorites: true
+  media_types: [image]
+  reprocess: true
+
+classifier:
+  profile: smoke_noop
+  device: cpu
+  batch_size: 1
+  image_size: 224
+  thresholds:
+    review: 0.5
+    tag: 0.7
+    archive: 0.9
+
+video:
+  enabled: false
+  frame_count: 3
+  frame_strategy: uniform
+  max_duration_seconds: 300
+  ffmpeg_path: "ffmpeg"
+
+actions:
+  dry_run: true
+  never_delete: true
+  review_album_name: "MediaRefinery Smoke Review"
+  create_album_if_missing: false
+  tag_name: "mediarefinery-smoke"
+  create_tag_if_missing: false
+  archive_enabled: false
+
+state:
+  sqlite_path: "tmp/immich-smoke-state.sqlite3"
+
+runtime:
+  concurrency: 1
+  rate_limit_per_second: 1
+  temp_dir: "tmp/immich-smoke-tmp"
+  delete_temp_files: true
+  log_level: "INFO"
+
+reports:
+  enabled: true
+  output_dir: "tmp/immich-smoke-reports"
+  format: "markdown"
+
+policies:
+  smoke_review:
+    image:
+      # Use [add_tag] for the Sprint 021 live tag smoke only after maintainers
+      # provide a disposable target and fresh short-lived API key.
+      on_match: [add_to_review_album]
+  ok:
+    image:
+      on_match: [no_action]

@@ -1,0 +1,60 @@
+# Local secrets and environment
+.env
+.env.*
+
+# Python
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Local data and outputs (align with docs; never commit user state)
+*.sqlite
+*.sqlite3
+*.db
+/data/
+/reports/
+/tmp/
+/models/
+
+# Frontend build artifacts
+node_modules/
+src/mediarefinery/web/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local-only contributor and planning notes (kept on disk for development,
+# not part of the public repository)
+AGENTS.md
+CLAUDE.md
+.cursor/
+.claude/
+agents/
+planning/handoff-template.md
+planning/sprint-*.md
+planning/release-plan.md
+planning/task-board.md
+planning/milestones.md
+planning/v1-public-alignment-audit.md
+planning/progress-log.md
+docs/0[0-9]-*.md
+docs/1[0-9]-*.md
+docs/20-*.md
+docs/contributing-team-workflow.md
+docs/presets/
+docs/adr/ADR-000[1-9]-*.md
+templates/agent-task-template.md
+REPO_GAP_ANALYSIS.md
+plan.txt
